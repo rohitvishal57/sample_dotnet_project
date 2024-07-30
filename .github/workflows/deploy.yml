@@ -10,6 +10,14 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Check network connectivity
+        run: |
+          ping ${{ secrets.AZURE_VM_IP }} -n 4
+          if %errorlevel% neq 0 (
+            echo "Ping failed. Please check network connectivity."
+            exit 1
+          )
+
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -43,30 +51,30 @@ jobs:
           $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
           
           try {
-              # Create remote session
-              $session = New-PSSession -ComputerName "${{ secrets.AZURE_VM_IP }}" -Credential $credential -UseSSL -SessionOption $sessionOptions
-              Write-Host "PSSession created successfully."
-              
-              # Copy files to remote VM
-              Copy-Item -Path ./app.zip -Destination "C:\inetpub\wwwroot\app.zip" -ToSession $session
-              Write-Host "Files copied successfully."
-              
-              # Execute remote commands
-              Invoke-Command -Session $session -ScriptBlock {
-                  Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
-                  Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
-                  # Restart IIS to apply changes
-                  iisreset
-              }
-              Write-Host "Deployment and IIS reset successful."
+            # Create remote session
+            $session = New-PSSession -ComputerName "${{ secrets.AZURE_VM_IP }}" -Credential $credential -UseSSL -SessionOption $sessionOptions
+            Write-Host "PSSession created successfully."
+            
+            # Copy files to remote VM
+            Copy-Item -Path ./app.zip -Destination "C:\inetpub\wwwroot\app.zip" -ToSession $session
+            Write-Host "Files copied successfully."
+            
+            # Execute remote commands
+            Invoke-Command -Session $session -ScriptBlock {
+              Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
+              Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
+              # Restart IIS to apply changes
+              iisreset
+            }
+            Write-Host "Deployment and IIS reset successful."
           }
           catch {
-              Write-Error "An error occurred: $_"
+            Write-Error "An error occurred: $_"
           }
           finally {
-              # Remove session
-              if ($session) {
-                  Remove-PSSession -Session $session
-                  Write-Host "PSSession removed."
-              }
+            # Remove session
+            if ($session) {
+              Remove-PSSession -Session $session
+              Write-Host "PSSession removed."
+            }
           }
