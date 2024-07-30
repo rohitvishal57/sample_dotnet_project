@@ -1,0 +1,51 @@
+name: Deploy .NET Application to Azure VM
+
+on:
+  push:
+    branches:
+      - main  # Adjust the branch name as needed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0'  # Specify the .NET version you are using
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish --configuration Release --no-build --output ./publish
+
+      - name: Prepare deployment package
+        run: tar -czvf app.tar.gz -C ./publish .
+
+      - name: Deploy to Azure VM
+        uses: appleboy/scp-action@v0.1.0
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: ${{ secrets.AZURE_VM_USERNAME }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          source: "app.tar.gz"
+          target: "/home/${{ secrets.AZURE_VM_USERNAME }}/app.tar.gz"
+
+      - name: SSH to Azure VM and deploy
+        uses: appleboy/ssh-action@v0.1.0
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: ${{ secrets.AZURE_VM_USERNAME }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            tar -xzvf app.tar.gz -C /var/www/myapp  # Adjust the deployment directory as needed
+            cd /var/www/myapp
+            dotnet myapp.dll  # Adjust the .NET command as needed
