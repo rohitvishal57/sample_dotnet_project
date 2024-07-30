@@ -12,11 +12,7 @@ jobs:
     steps:
       - name: Check network connectivity
         run: |
-          ping ${{ secrets.AZURE_VM_IP }} -n 4
-          if (%errorlevel% neq 0) {
-            echo "Ping failed. Please check network connectivity."
-            exit 1
-          }
+          ping 20.219.164.12 -n 4
 
       - name: Checkout code
         uses: actions/checkout@v3
