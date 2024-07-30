@@ -42,19 +42,31 @@ jobs:
           # Prepare session options
           $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
           
-          # Create remote session
-          $session = New-PSSession -ComputerName "${{ secrets.AZURE_VM_IP }}" -Credential $credential -UseSSL -SessionOption $sessionOptions
-          
-          # Copy files to remote VM
-          Copy-Item -Path ./app.zip -Destination "C:\inetpub\wwwroot\app.zip" -ToSession $session
-
-          # Execute remote commands
-          Invoke-Command -Session $session -ScriptBlock {
-              Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
-              Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
-              # Restart IIS to apply changes
-              iisreset
+          try {
+              # Create remote session
+              $session = New-PSSession -ComputerName "${{ secrets.AZURE_VM_IP }}" -Credential $credential -UseSSL -SessionOption $sessionOptions
+              Write-Host "PSSession created successfully."
+              
+              # Copy files to remote VM
+              Copy-Item -Path ./app.zip -Destination "C:\inetpub\wwwroot\app.zip" -ToSession $session
+              Write-Host "Files copied successfully."
+              
+              # Execute remote commands
+              Invoke-Command -Session $session -ScriptBlock {
+                  Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
+                  Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
+                  # Restart IIS to apply changes
+                  iisreset
+              }
+              Write-Host "Deployment and IIS reset successful."
           }
-          
-          # Remove session
-          Remove-PSSession -Session $session
+          catch {
+              Write-Error "An error occurred: $_"
+          }
+          finally {
+              # Remove session
+              if ($session) {
+                  Remove-PSSession -Session $session
+                  Write-Host "PSSession removed."
+              }
+          }
