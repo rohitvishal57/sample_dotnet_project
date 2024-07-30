@@ -1,4 +1,4 @@
-name: Deploy .NET Application to Azure VM
+name: Deploy .NET Application to Azure Windows Server VM
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
@@ -28,24 +28,19 @@ jobs:
         run: dotnet publish --configuration Release --no-build --output ./publish
 
       - name: Prepare deployment package
-        run: tar -czvf app.tar.gz -C ./publish .
+        run: |
+          Compress-Archive -Path ./publish/* -DestinationPath ./app.zip
 
-      - name: Deploy to Azure VM
-        uses: appleboy/scp-action@v0.1.0
+      - name: Deploy to Azure Windows Server VM
+        uses: mluo0412/winrm-action@v1
         with:
-          host: ${{ secrets.AZURE_VM_IP }}
+          address: ${{ secrets.AZURE_VM_IP }}
           username: ${{ secrets.AZURE_VM_USERNAME }}
-          key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          source: "app.tar.gz"
-          target: "/home/${{ secrets.AZURE_VM_USERNAME }}/app.tar.gz"
-
-      - name: SSH to Azure VM and deploy
-        uses: appleboy/ssh-action@v0.1.0
-        with:
-          host: ${{ secrets.AZURE_VM_IP }}
-          username: ${{ secrets.AZURE_VM_USERNAME }}
-          key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          script: |
-            tar -xzvf app.tar.gz -C /var/www/myapp  # Adjust the deployment directory as needed
-            cd /var/www/myapp
-            dotnet myapp.dll  # Adjust the .NET command as needed
+          password: ${{ secrets.AZURE_VM_PASSWORD }}
+          command: |
+            New-Item -ItemType Directory -Force -Path C:\inetpub\wwwroot\app
+            Invoke-WebRequest -Uri "http://20.219.164.12/app.zip" -OutFile "C:\inetpub\wwwroot\app.zip"
+            Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
+            Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
+            # Restart IIS or your application
+            iisreset
