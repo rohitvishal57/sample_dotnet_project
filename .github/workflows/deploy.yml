@@ -25,22 +25,36 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish --configuration Release --no-build --output ./publish
+        run: dotnet publish --configuration Release --no-build --output ./output
 
-      - name: Prepare deployment package
+      - name: Compress output
         run: |
-          Compress-Archive -Path ./publish/* -DestinationPath ./app.zip
+          Compress-Archive -Path ./output/* -DestinationPath ./app.zip
 
       - name: Deploy to Azure Windows Server VM
-        uses: mluo0412/winrm-action@v1
-        with:
-          address: ${{ secrets.AZURE_VM_IP }}
-          username: ${{ secrets.AZURE_VM_USERNAME }}
-          password: ${{ secrets.AZURE_VM_PASSWORD }}
-          command: |
-            New-Item -ItemType Directory -Force -Path C:\inetpub\wwwroot\app
-            Invoke-WebRequest -Uri "http://20.219.164.12/app.zip" -OutFile "C:\inetpub\wwwroot\app.zip"
-            Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
-            Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
-            # Restart IIS or your application
-            iisreset
+        run: |
+          $ErrorActionPreference = "Stop"
+          $username = "${{ secrets.AZURE_VM_USERNAME }}"
+          $password = "${{ secrets.AZURE_VM_PASSWORD }}"
+          $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+          $credential = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
+          
+          # Prepare session options
+          $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
+          
+          # Create remote session
+          $session = New-PSSession -ComputerName "${{ secrets.AZURE_VM_IP }}" -Credential $credential -UseSSL -SessionOption $sessionOptions
+          
+          # Copy files to remote VM
+          Copy-Item -Path ./app.zip -Destination "C:\inetpub\wwwroot\app.zip" -ToSession $session
+
+          # Execute remote commands
+          Invoke-Command -Session $session -ScriptBlock {
+              Expand-Archive -Path "C:\inetpub\wwwroot\app.zip" -DestinationPath "C:\inetpub\wwwroot\app" -Force
+              Remove-Item -Path "C:\inetpub\wwwroot\app.zip"
+              # Restart IIS to apply changes
+              iisreset
+          }
+          
+          # Remove session
+          Remove-PSSession -Session $session
