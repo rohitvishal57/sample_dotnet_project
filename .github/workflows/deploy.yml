@@ -1,54 +1,53 @@
-name: Deploy .NET Application to Azure Windows Server VM
+name: Deploy to Windows VM
 
 on:
   push:
     branches:
-      - main  # Adjust the branch name as needed
+      - main  # Adjust this to the branch you want to trigger the deployment
 
 jobs:
-  build:
-    runs-on: windows-latest
-
+  build_and_deploy:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '6.0'  # Specify the .NET version you are using
+    - name: Set up .NET SDK
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0'  # Specify the .NET version you are using
 
-      - name: Restore dependencies
-        run: dotnet restore
+    - name: Build application
+      run: |
+        dotnet build -c Release
+        dotnet publish -c Release -o ./publish
 
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
+    - name: Create ZIP file
+      run: |
+        cd ./publish
+        zip -r ../app.zip .
+        cd ..
 
-      - name: Publish
-        run: dotnet publish --configuration Release --no-build --output ./output
+    - name: Upload artifact to VM via SCP
+      run: |
+        scp -i ${{ secrets.SSH_PRIVATE_KEY }} -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Users/abhi_deployments/
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Compress output
-        run: Compress-Archive -Path ./output/* -DestinationPath ./app.zip
-
-      - name: Copy artifact to VM via SCP
-        uses: appleboy/scp-action@master
-        with:
-          source: ./app.zip
-          target: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Users/abhi_deployments/
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Deploy application on VM
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /C:/Users/abhi_deployments/
-            Expand-Archive -Path app.zip -DestinationPath ./app -Force
-            Remove-Item -Path app.zip
-            # Replace the following with your application's specific deployment steps
-            # Example: Copy files to IIS directory
-            Copy-Item -Path ./app/* -Destination "C:\inetpub\wwwroot" -Recurse -Force
-            # Restart IIS to apply changes
-            iisreset
+    - name: Deploy application on VM via SSH
+      run: |
+        ssh -i ${{ secrets.SSH_PRIVATE_KEY }} -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          # Ensure PowerShell script execution is enabled
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+          
+          # Extract the ZIP file
+          Expand-Archive -Path C:/Users/abhi_deployments/app.zip -DestinationPath C:/Users/abhi_deployments/app -Force
+          
+          # Remove the ZIP file
+          Remove-Item -Path C:/Users/abhi_deployments/app.zip
+          
+          # Copy files to the IIS directory
+          Copy-Item -Path C:/Users/abhi_deployments/app/* -Destination C:/inetpub/wwwroot -Recurse -Force
+        EOF
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
