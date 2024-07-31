@@ -29,19 +29,23 @@ jobs:
         zip -r ../app.zip .
         cd ..
 
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+
+    - name: Add the VM to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
     - name: Upload artifact to VM via SCP
       run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
-        chmod 600 private_key.pem
-        scp -i private_key.pem -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Users/abhi_deployments/
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        scp -i ~/.ssh/id_rsa -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Users/abhi_deployments/
 
     - name: Deploy application on VM via SSH
       run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
-        chmod 600 private_key.pem
-        ssh -i private_key.pem -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           # Ensure PowerShell script execution is enabled
           Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           
@@ -54,5 +58,4 @@ jobs:
           # Copy files to the IIS directory
           Copy-Item -Path C:/Users/abhi_deployments/app/* -Destination C:/inetpub/wwwroot -Recurse -Force
         EOF
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
