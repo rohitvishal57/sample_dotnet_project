@@ -1,13 +1,14 @@
-name: Deploy to Windows VM
+name: Build and Deploy to Windows VM
 
 on:
   push:
     branches:
-      - main  # Adjust this to the branch you want to trigger the deployment
+      - main  # Trigger the workflow on pushes to the 'main' branch
 
 jobs:
   build_and_deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use a Linux runner for the GitHub Actions workflow
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -15,7 +16,7 @@ jobs:
     - name: Set up .NET SDK
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '6.0'  # Specify the .NET version you are using
+        dotnet-version: '6.0'  # Adjust to your .NET version
 
     - name: Build application
       run: |
@@ -30,13 +31,17 @@ jobs:
 
     - name: Upload artifact to VM via SCP
       run: |
-        scp -i ${{ secrets.SSH_PRIVATE_KEY }} -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Users/abhi_deployments/
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+        chmod 600 private_key.pem
+        scp -i private_key.pem -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Users/abhi_deployments/
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Deploy application on VM via SSH
       run: |
-        ssh -i ${{ secrets.SSH_PRIVATE_KEY }} -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+        chmod 600 private_key.pem
+        ssh -i private_key.pem -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           # Ensure PowerShell script execution is enabled
           Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           
