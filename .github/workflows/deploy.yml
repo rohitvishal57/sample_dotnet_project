@@ -8,7 +8,7 @@ on:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest  # Use a Linux runner for the GitHub Actions workflow
-
+    environment: dev_abhi
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -38,6 +38,11 @@ jobs:
     - name: Upload artifact to VM via SCP
       run: |
         scp -i ~/.ssh/id_rsa -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/D:/abhi_deployments/
+    - name: Approval step
+      if: github.event_name == 'workflow_dispatch'
+      run: echo "Waiting for manual approval..."
+      env:
+        MANUAL_APPROVAL: ${{ secrets.MANUAL_APPROVAL }}
     - name: Deploy application on VM via SSH
       run: |
         ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
