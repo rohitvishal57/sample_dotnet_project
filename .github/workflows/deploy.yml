@@ -22,33 +22,22 @@ jobs:
       run: |
         dotnet build -c Release
         dotnet publish -c Release -o ./publish
-
     - name: Create ZIP file
       run: |
         cd ./publish
         zip -r ../app.zip .
         cd ..
-
     - name: Set up SSH key
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-
-    #- name: Add the VM to known hosts
-     # run: |
-     #   ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
+    - name: Add the VM to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
     - name: Upload artifact to VM via SCP
       run: |
         scp -i ~/.ssh/id_rsa -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/D:/abhi_deployments/
-    
-    - name: Approval step
-      if: github.event_name == 'workflow_dispatch'
-      run: echo "Waiting for manual approval..."
-      env:
-        MANUAL_APPROVAL: ${{ secrets.MANUAL_APPROVAL }}
-        
     - name: Deploy application on VM via SSH
       run: |
         ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
@@ -64,4 +53,3 @@ jobs:
           # Copy files to the IIS directory
           Copy-Item -Path D:/abhi_deployments/app/* -Destination C:/inetpub/wwwroot -Recurse -Force
         EOF
-
