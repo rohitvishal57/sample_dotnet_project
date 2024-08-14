@@ -29,15 +29,39 @@ jobs:
     #     unzip sonar-scanner-cli-4.8.0.2856-linux.zip -d $HOME/sonar-scanner
     #     export PATH="$HOME/sonar-scanner/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
 
-    - name: Run SonarQube Analysis
-      uses: sonarsource/sonarqube-scan-action@v3.0.0
+    # - name: Run SonarQube Analysis
+    #   uses: sonarsource/sonarqube-scan-action@v3.0.0
+    #   with:
+    #     projectBaseDir: .  # The root directory of your project
+    #   env:
+    #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    #     SONAR_PROJECT_KEY: dot-net-sample 
+    - name: Cache SonarQube packages
+      uses: actions/cache@v1
       with:
-        projectBaseDir: .  # The root directory of your project
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        SONAR_PROJECT_KEY: dot-net-sample 
-    
+        path: ~\.sonar\cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+    - name: Cache SonarQube scanner
+      id: cache-sonar-scanner
+      uses: actions/cache@v1
+      with:
+        path: .\.sonar\scanner
+        key: ${{ runner.os }}-sonar-scanner
+        restore-keys: ${{ runner.os }}-sonar-scanner
+    - name: Install SonarQube scanner
+      if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        New-Item -Path .\.sonar\scanner -ItemType Directory
+        dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+    - name: Build and analyze
+      shell: powershell
+      run: |
+        .\.sonar\scanner\dotnet-sonarscanner begin /k:"dot-net-sample" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
+        dotnet build
+        .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
     - name: Create ZIP file
       run: |
         cd ./publish
