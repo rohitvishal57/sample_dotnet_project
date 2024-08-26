@@ -60,10 +60,15 @@ jobs:
         name: app-artifacts
     - name: Print artifact path
       run: echo "Artifact path:$(pwd)/app-artifacts"
-    - name: Check permissions
-      run: ls -l app-artifacts
-    - name: Access artifact (optional)
-      run: cat app-artifacts/file.txt
+    - name: Debug:List files in the current directory
+      run: |
+        echo "Current path: $(pwd)"
+        ls -l
+
+    - name: Debug:List files in app-artifacts directory
+      run: |
+        echo "Artifact path: $(pwd)/app-artifacts"
+        ls -l app-artifacts
     - name: List downloaded artifacts
       run: |
         ls -l app-artifacts
