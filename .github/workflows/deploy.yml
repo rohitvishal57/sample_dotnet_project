@@ -59,14 +59,9 @@ jobs:
       with:
         name: app-artifacts
         
-    - name: Unzip the build artifacts
-      run: |
-        mkdir -p ./publish
-        unzip -q app-artifacts.zip -d ./publish
-        
     - name: Create ZIP file
       run: |
-        cd ./publish
+        cd ./app-artifacts
         zip -r ../app.zip .
         cd ..
     
