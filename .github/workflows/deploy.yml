@@ -61,6 +61,8 @@ jobs:
         
     - name: Create ZIP file
       run: |
+        mkdir -p app-artifacts
+        cp -r ./app-artifacts/* ./app-artifacts/
         cd ./app-artifacts
         zip -r ../app.zip .
         cd ..
