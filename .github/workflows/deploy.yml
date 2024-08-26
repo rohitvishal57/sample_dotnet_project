@@ -58,14 +58,21 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: app-artifacts
+    - name: List downloaded artifacts
+      run: |
+        ls -l app-artifacts
         
     - name: Create ZIP file
       run: |
         mkdir -p app-artifacts
-        cp -r ./app-artifacts/* ./app-artifacts/  # This works now since artifacts are downloaded
-        cd ./app-artifacts
-        zip -r ../app.zip .
-        cd ..
+        if [ -d "./app-artifacts" ] && [ "$(ls -A ./app-artifacts)" ]; then
+          cp -r ./app-artifacts/* ./app-artifacts/
+          cd ./app-artifacts
+          zip -r ../app.zip .
+          cd ..
+        else
+          echo "No artifacts found in ./app-artifacts. Skipping copy."
+        fi
     
     - name: Set up SSH key
       run: |
