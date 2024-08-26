@@ -62,7 +62,7 @@ jobs:
     - name: Create ZIP file
       run: |
         mkdir -p app-artifacts
-        cp -r ./app-artifacts/* ./app-artifacts/
+        cp -r ./app-artifacts/* ./app-artifacts/  # This works now since artifacts are downloaded
         cd ./app-artifacts
         zip -r ../app.zip .
         cd ..
