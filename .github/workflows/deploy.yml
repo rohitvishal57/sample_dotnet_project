@@ -58,6 +58,12 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: app-artifacts
+    - name: Print artifact path
+      run: echo "Artifact path:$(pwd)/app-artifacts"
+    - name: Check permissions
+      run: ls -l app-artifacts
+    - name: Access artifact (optional)
+      run: cat app-artifacts/file.txt
     - name: List downloaded artifacts
       run: |
         ls -l app-artifacts
