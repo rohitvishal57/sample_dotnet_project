@@ -54,31 +54,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: build  # This ensures that the deploy job only runs if the build job succeeds
     steps:
+    - name: Create directory for artifacts
+      run: mkdir -p ./my-artifacts
+
     - name: Download build artifacts
       uses: actions/download-artifact@v3
       with:
         name: app-artifacts
-    - name: Print artifact path
-      run: echo "Artifact path:$(pwd)/app-artifacts"
-    - name: Debug:List files in the current directory
-      run: |
-        echo "Current path: $(pwd)"
-        ls -l
+        path: ./my-artifacts
 
-    - name: Debug:List files in app-artifacts directory
+    - name: Debug:List files in the artifact directory
       run: |
-        echo "Artifact path: $(pwd)/app-artifacts"
-        ls -l app-artifacts
-    - name: List downloaded artifacts
-      run: |
-        ls -l app-artifacts
+        echo "Artifact path: $(pwd)/my-artifacts"
+        ls -l ./my-artifacts
         
     - name: Create ZIP file
       run: |
-        mkdir -p app-artifacts
-        if [ -d "./app-artifacts" ] && [ "$(ls -A ./app-artifacts)" ]; then
-          cp -r ./app-artifacts/* ./app-artifacts/
-          cd ./app-artifacts
+        if [ -d "./my-artifacts" ] && [ "$(ls -A ./my-artifacts)" ]; then
+          cp -r ./my-artifacts/* ./my-artifacts/
+          cd ./my-artifacts
           zip -r ../app.zip .
           cd ..
         else
