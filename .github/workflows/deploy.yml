@@ -70,14 +70,9 @@ jobs:
         
     - name: Create ZIP file
       run: |
-        if [ -d "./my-artifacts" ] && [ "$(ls -A ./my-artifacts)" ]; then
-          cp -r ./my-artifacts/* ./my-artifacts/
-          cd ./my-artifacts
-          zip -r ../app.zip .
-          cd ..
-        else
-          echo "No artifacts found in ./app-artifacts. Skipping copy."
-        fi
+        cd ./my-artifacts
+        zip -r ../app.zip ./*
+        cd ..
     
     - name: Set up SSH key
       run: |
