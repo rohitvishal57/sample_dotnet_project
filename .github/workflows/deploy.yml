@@ -100,21 +100,11 @@ jobs:
     
     - name: Ensure deployment directory exists on the VM
       run: |
-        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          powershell -Command "if (-Not (Test-Path -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}')) { New-Item -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}' -ItemType Directory }"
-        EOF
+        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "powershell -Command \"if (-Not (Test-Path -Path 'D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA')) { New-Item -Path 'D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA' -ItemType Directory }\""
 
     - name: Manage Previous Deployments (Keep Last 3)
       run: |
-        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          powershell -Command "
-          \$deploymentDir = 'D:/abhi_deployments/${ENVIRONMENT}'
-          \$deployments = Get-ChildItem -Path \$deploymentDir | Sort-Object LastWriteTime -Descending
-          if (\$deployments.Count -gt 3) {
-            \$deployments | Select-Object -Skip 3 | Remove-Item -Recurse -Force
-          }
-          "
-        EOF
+        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "powershell -Command \"\$deploymentDir = 'D:/abhi_deployments/$ENVIRONMENT'; \$deployments = Get-ChildItem -Path \$deploymentDir | Sort-Object LastWriteTime -Descending; if (\$deployments.Count -gt 3) { \$deployments | Select-Object -Skip 3 | Remove-Item -Recurse -Force }\""
         
     - name: Upload artifact to VM via SCP
       run: |
@@ -122,11 +112,9 @@ jobs:
     
     - name: Deploy application on VM via SSH
       run: |
-        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          powershell -Command "
-          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
-          Expand-Archive -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app.zip' -DestinationPath 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app' -Force
-          Remove-Item -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app.zip' -Force
-          Copy-Item -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app/*' -Destination 'C:/inetpub/wwwroot' -Recurse -Force
-          "
-        EOF
+        ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "powershell -Command \"
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force;
+          Expand-Archive -Path 'D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA/app.zip' -DestinationPath 'D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA/app' -Force;
+          Remove-Item -Path 'D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA/app.zip' -Force;
+          Copy-Item -Path 'D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA/app/*' -Destination 'C:/inetpub/wwwroot' -Recurse -Force;
+        \""
