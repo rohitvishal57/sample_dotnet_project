@@ -108,7 +108,7 @@ jobs:
         
     - name: Upload artifact to VM via SCP
       run: |
-        scp -i ~/.ssh/id_rsa -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/D:/abhi_deployments/
+        scp -i ~/.ssh/id_rsa -P 22 ./app.zip ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/D:/abhi_deployments/$ENVIRONMENT/$GITHUB_SHA/
     
     - name: Deploy application on VM via SSH
       run: |
