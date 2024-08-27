@@ -101,21 +101,19 @@ jobs:
     - name: Ensure deployment directory exists on the VM
       run: |
         ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          mkdir -p D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}
+          powershell -Command "if (-Not (Test-Path -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}')) { New-Item -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}' -ItemType Directory }"
         EOF
 
     - name: Manage Previous Deployments (Keep Last 3)
       run: |
         ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          DEPLOYMENT_DIR="D:/abhi_deployments/${ENVIRONMENT}"
-          DEPLOYMENTS=(\$(ls -dt \${DEPLOYMENT_DIR}/*))
-          DEPLOYMENT_COUNT=\${#DEPLOYMENTS[@]}
-          if [ "\$DEPLOYMENT_COUNT" -gt 3 ]; then
-            for ((i=3; i<\${DEPLOYMENT_COUNT}; i++)); do
-              echo "Removing \${DEPLOYMENTS[\$i]}"
-              rm -rf "\${DEPLOYMENTS[\$i]}"
-            done
-          fi
+          powershell -Command "
+          \$deploymentDir = 'D:/abhi_deployments/${ENVIRONMENT}'
+          \$deployments = Get-ChildItem -Path \$deploymentDir | Sort-Object LastWriteTime -Descending
+          if (\$deployments.Count -gt 3) {
+            \$deployments | Select-Object -Skip 3 | Remove-Item -Recurse -Force
+          }
+          "
         EOF
         
     - name: Upload artifact to VM via SCP
@@ -125,15 +123,10 @@ jobs:
     - name: Deploy application on VM via SSH
       run: |
         ssh -i ~/.ssh/id_rsa -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          # Ensure PowerShell script execution is enabled
+          powershell -Command "
           Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
-          
-          # Extract the ZIP file
-          Expand-Archive -Path D:/abhi_deployments/app.zip -DestinationPath D:/abhi_deployments/app -Force
-          
-          # Remove the ZIP file
-          Remove-Item -Path D:/abhi_deployments/app.zip
-          
-          # Copy files to the IIS directory
-          Copy-Item -Path D:/abhi_deployments/app/* -Destination C:/inetpub/wwwroot -Recurse -Force
+          Expand-Archive -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app.zip' -DestinationPath 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app' -Force
+          Remove-Item -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app.zip' -Force
+          Copy-Item -Path 'D:/abhi_deployments/${ENVIRONMENT}/${GITHUB_SHA}/app/*' -Destination 'C:/inetpub/wwwroot' -Recurse -Force
+          "
         EOF
